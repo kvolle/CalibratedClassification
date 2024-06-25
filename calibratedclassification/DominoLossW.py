@@ -27,10 +27,6 @@ class DOMINO_Loss_W(_Loss):
         
     def penalty(self, outputs: torch.Tensor, labels: torch.Tensor, matrix_penalty: torch.Tensor):
         
-        #matrix_vals = pd.read_csv('hccm_ah.csv', index_col = 0) #header=None
-        #matrix_penalty = torch.from_numpy(matrix_vals.to_numpy())
-        #matrix_penalty = matrix_penalty.float().cuda()
-        
         batch_size, num_classes = outputs.shape
         
         soft_outputs = F.softmax(outputs, dim=1) #B x 10
@@ -45,9 +41,6 @@ class DOMINO_Loss_W(_Loss):
         penalty = torch.bmm(labels_new.float(), matrix_penalty.float()) #(b, 1, c) * (b, c, c) = (b, 1, c)
         penalty_term = torch.bmm(penalty.float(), soft_outputs.float()) #(b, 1, c) * (b, c, 1) = (b,1,1)
         
-        #for i in range(len(outputs)):
-        #    penalty = torch.mm(F.one_hot(targets[i:i+1], 10).float(),matrix_penalty)
-        #    penalty_term[i] = torch.mm(penalty.float(),torch.transpose(soft_outputs[i:i+1, :], 0, 1))
         
         CE_scale = torch.empty((len(outputs),)).cuda()
         for i in range(len(outputs)):
@@ -74,7 +67,7 @@ class DOMINO_Loss_W(_Loss):
         penalty_total = self.penalty(outputs,labels,matrix_penalty) ##, matrix_penalty=matrix_penalty) ##, beta=1.)
         #alpha0, alpha1 = self.stepsizes(epoch,num_epochs)
         
-        total_loss: torch.Tensor = beta2*penalty_total ##CE + (penalty_sum/(n*h*w*z))
+        total_loss: torch.Tensor = beta2*penalty_total
         
         return total_loss
     
