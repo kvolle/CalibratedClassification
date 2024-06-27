@@ -55,17 +55,9 @@ class DOMINO_Loss_W(_Loss):
         
         return penalty_term
   
-    #def stepsizes(self, epoch: int, num_epochs: int):
+    def forward(self, outputs: torch.Tensor, labels: torch.Tensor, beta2: int):
         
-        #alpha0 = (1-epoch/num_epochs)
-        #alpha1 = epoch/num_epochs
-          
-        #return alpha0, alpha1
-          
-    def forward(self, outputs: torch.Tensor, labels: torch.Tensor, matrix_penalty: torch.Tensor, beta2: int):
-        #ce_total = self.ce(outputs,labels)
-        penalty_total = self.penalty(outputs,labels,matrix_penalty) ##, matrix_penalty=matrix_penalty) ##, beta=1.)
-        #alpha0, alpha1 = self.stepsizes(epoch,num_epochs)
+        penalty_total = self.penalty(outputs,labels)
         
         total_loss: torch.Tensor = beta2*penalty_total
         

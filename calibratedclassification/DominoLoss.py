@@ -18,14 +18,18 @@ class _Loss(nn.Module):
             self.reduction = reduction
 
 class DOMINO_Loss(_Loss):
-    def _init_(self):
+    def _init_(self, matrix_penalty, additive = True, beta1=0.5, beta2=0.5):
         super()._init_()
+        self.matrix_penalty = matrix_penalty
+        self.additive = additive
+        self.beta1 = beta1
+        self.beta2 = beta2
       
     def ce(self, outputs: torch.Tensor, labels: torch.Tensor):
         ce_compute = nn.CrossEntropyLoss()
         return ce_compute(outputs,labels) ##self.cross_entropy(input,target)
         
-    def penalty(self, outputs: torch.Tensor, labels: torch.Tensor, matrix_penalty: torch.Tensor):
+    def penalty(self, outputs: torch.Tensor, labels: torch.Tensor):
         
         batch_size, num_classes = outputs.shape
         
@@ -35,31 +39,31 @@ class DOMINO_Loss(_Loss):
         labels_new = F.one_hot(labels,num_classes)  #batch size x classes
         labels_new = labels_new[:,None,:] #batch size x 1 x classes
         
-        matrix_penalty = matrix_penalty[None, :, :] # 1 x classes x classes
+        matrix_penalty = self.matrix_penalty[None, :, :] # 1 x classes x classes
         matrix_penalty = matrix_penalty.repeat(batch_size, 1, 1) #batch_size x classes x classes
         
         penalty = torch.bmm(labels_new.float(), matrix_penalty.float()) #(b, 1, c) * (b, c, c) = (b, 1, c)
         penalty_term = torch.bmm(penalty.float(), soft_outputs.float()) #(b, 1, c) * (b, c, 1) = (b,1,1)
         
-        
-        scale = 3.
-        penalty_term = scale*torch.mean(penalty_term)#torch.sum(penalty_term)/batch_size
+        if self.additive:
+            scale = 3.
+            penalty_term = scale*torch.mean(penalty_term)
+        else:
+            CE_scale = torch.empty((len(outputs),)).cuda()
+            for i in range(len(outputs)):
+                CE_scale[i] = self.ce(outputs[i,:], labels[i])
+
+            penalty_term = torch.flatten(penalty_term)
+            term = torch.mul(CE_scale, penalty_term)
+            penalty_term = torch.mean(term)
         
         return penalty_term
   
-    #def stepsizes(self, epoch: int, num_epochs: int):
-        
-        #alpha0 = (1-epoch/num_epochs)
-        #alpha1 = epoch/num_epochs
-          
-        #return alpha0, alpha1
-          
-    def forward(self, outputs: torch.Tensor, labels: torch.Tensor, matrix_penalty: torch.Tensor, beta1: int, beta2: int):
+    def forward(self, outputs: torch.Tensor, labels: torch.Tensor):
         ce_total = self.ce(outputs,labels)
-        penalty_total = self.penalty(outputs,labels,matrix_penalty) ##, matrix_penalty=matrix_penalty) ##, beta=1.)
-        #alpha0, alpha1 = self.stepsizes(epoch,num_epochs)
-        
-        total_loss: torch.Tensor = (beta1*ce_total) + (beta2*penalty_total)
+        penalty_total = self.penalty(outputs,labels)
+        # for non-additive beta1 = 0, beta2 = 1
+        total_loss: torch.Tensor = (self.beta1*ce_total) + (self.beta2*penalty_total)
         
         return total_loss
     
