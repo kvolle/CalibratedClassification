@@ -35,9 +35,9 @@ def compute_calibration(true_labels, pred_labels, confidences, num_bins=10):
     bins = np.linspace(0.0, 1.0, num_bins + 1)
     indices = np.digitize(confidences, bins, right=True)
 
-    bin_accuracies = np.zeros(num_bins, dtype=np.float)
-    bin_confidences = np.zeros(num_bins, dtype=np.float)
-    bin_counts = np.zeros(num_bins, dtype=np.int)
+    bin_accuracies = np.zeros(num_bins, dtype=float)#np.float)
+    bin_confidences = np.zeros(num_bins, dtype=float)#np.float)
+    bin_counts = np.zeros(num_bins, dtype=int)#np.int)
 
     for b in range(num_bins):
         selected = np.where(indices == b + 1)[0]
@@ -65,7 +65,7 @@ def compute_calibration(true_labels, pred_labels, confidences, num_bins=10):
 
 def _reliability_diagram_subplot(ax, bin_data, 
                                  draw_ece=True, 
-                                 draw_bin_importance=False,
+                                 draw_bin_importance="skip",
                                  title="Reliability Diagram", 
                                  xlabel="Confidence", 
                                  ylabel="Expected Accuracy"):
@@ -132,10 +132,10 @@ def _confidence_histogram_subplot(ax, bin_data,
     bins = bin_data["bins"]
 
     bin_size = 1.0 / len(counts)
-    positions = bins[:-1] + bin_size/2.0
+    positions = bins[:-1] + bin_size / 2.0
 
     ax.bar(positions, counts, width=bin_size * 0.9)
-   
+
     ax.set_xlim(0, 1)
     ax.set_title(title)
     ax.set_xlabel(xlabel)
@@ -147,6 +147,10 @@ def _confidence_histogram_subplot(ax, bin_data,
         conf_plt = ax.axvline(x=bin_data["avg_confidence"], ls="dotted", lw=3, 
                               c="#444", label="Avg. confidence")
         ax.legend(handles=[acc_plt, conf_plt])
+
+    # Annotate each bin with its count
+    for i, count in enumerate(counts):
+        ax.text(positions[i], count, str(count), ha='center', va='bottom')
 
 
 def _reliability_diagram_combined(bin_data, 
@@ -172,7 +176,7 @@ def _reliability_diagram_combined(bin_data,
    
     _confidence_histogram_subplot(ax[1], bin_data, draw_averages, title="")
     # Also negate the ticks for the upside-down histogram (if necessary, otherwise this doesn't change anything).
-    new_ticks = np.abs(ax[1].get_yticks()).astype(np.int)
+    new_ticks = np.abs(ax[1].get_yticks()).astype(int)#np.int)
     ax[1].set_yticklabels(new_ticks)    
 
     bin_data["counts"] = orig_counts
@@ -185,7 +189,7 @@ def _reliability_diagram_combined(bin_data,
 
 
 def reliability_diagram(true_labels, pred_labels, confidences, num_bins=10,
-                        draw_ece=True, draw_bin_importance=False, 
+                        draw_ece=True, draw_bin_importance="Skip", 
                         draw_averages=True, title="Reliability Diagram", 
                         figsize=(6, 6), dpi=72, return_fig=False, hist_upside_down=False):
     """Draws a reliability diagram and confidence histogram in a single plot.
@@ -220,7 +224,7 @@ def reliability_diagram(true_labels, pred_labels, confidences, num_bins=10,
         num_bins: number of bins
         draw_ece: whether to include the Expected Calibration Error
         draw_bin_importance: whether to represent how much each bin contributes
-            to the total accuracy: False, "alpha", "widths"
+            to the total accuracy: "skip", "alpha", "widths"
         draw_averages: whether to draw the overall accuracy and confidence in
             the confidence histogram
         title: optional title for the plot
@@ -235,7 +239,7 @@ def reliability_diagram(true_labels, pred_labels, confidences, num_bins=10,
 
 
 def reliability_diagrams(results, num_bins=10,
-                         draw_ece=True, draw_bin_importance=False, 
+                         draw_ece=True, draw_bin_importance="skip", 
                          num_cols=4, dpi=72, return_fig=False):
     """Draws reliability diagrams for one or more models.
     
@@ -246,7 +250,7 @@ def reliability_diagrams(results, num_bins=10,
         num_bins: number of bins
         draw_ece: whether to include the Expected Calibration Error
         draw_bin_importance: whether to represent how much each bin contributes
-            to the total accuracy: False, "alpha", "widths"
+            to the total accuracy: "skip", "alpha", "widths"
         num_cols: how wide to make the plot
         dpi: setting for matplotlib
         return_fig: if True, returns the matplotlib Figure object
